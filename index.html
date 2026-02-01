@@ -18,19 +18,31 @@
             </button>
         </div>
 
-        <div class="mb-8 p-4 bg-black/40 rounded-lg border border-gray-600 relative overflow-hidden">
-            <div class="absolute top-0 right-0 bg-blue-600 text-[10px] px-2 py-0.5 rounded-bl">LIVE DATA</div>
+        <div class="mb-6 p-4 bg-black/40 rounded-lg border border-gray-600 relative overflow-hidden">
+            <div id="badgeStatus" class="absolute top-0 right-0 bg-gray-600 text-[10px] px-2 py-0.5 rounded-bl font-bold">LOADING...</div>
             
             <div class="grid grid-cols-3 gap-4 text-sm">
                 <div class="text-gray-400">Versi Server:</div>
-                <div class="col-span-2 font-bold text-green-400" id="showVer">Loading...</div>
+                <div class="col-span-2 font-bold text-green-400" id="showVer">...</div>
                 
                 <div class="text-gray-400">Link Server:</div>
-                <div class="col-span-2 text-blue-300 break-all text-xs" id="showLink">Loading...</div>
+                <div class="col-span-2 text-blue-300 break-all text-xs" id="showLink">...</div>
+
+                <div class="text-gray-400">Status Mode:</div>
+                <div class="col-span-2 font-bold" id="showMaint">...</div>
             </div>
         </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-8">
+            <button onclick="setMaintenance(false)" class="bg-green-600 hover:bg-green-700 py-3 rounded text-sm font-bold shadow-lg shadow-green-500/20 transition">
+                <i class="fas fa-play"></i> ONLINE MODE
+            </button>
+            <button onclick="setMaintenance(true)" class="bg-red-600 hover:bg-red-700 py-3 rounded text-sm font-bold shadow-lg shadow-red-500/20 transition">
+                <i class="fas fa-ban"></i> MAINTENANCE
+            </button>
+        </div>
         <div class="space-y-4 border-t border-gray-700 pt-6">
-            <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider">Update Ke Versi Baru</h3>
+            <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider">Update File / Versi</h3>
             
             <div>
                 <label class="block text-xs font-bold text-gray-500 mb-1">VERSI BARU</label>
@@ -54,110 +66,123 @@
         // === KONFIGURASI ===
         const CONFIG = {
             binId: '697f7a76d0ea881f4098f16b',
-            apiKey: '$2a$10$HH4YVR69nzQ8gD4/NngQt.s82mY/6EUPLNO5Kl7AsrBNQkQ/mjKd2' // <--- JANGAN LUPA ISI INI LAGI
+            apiKey: '$2a$10$HH4YVR69nzQ8gD4/NngQt.s82mY/6EUPLNO5Kl7AsrBNQkQ/mjKd2' 
         };
         // ===================
 
-        // Fungsi 1: Ambil Data (GET) untuk Preview
+        // Variabel global untuk menyimpan data terakhir
+        let currentData = { version: "1.0", download_url: "", maintenance: false };
+
+        // Fungsi 1: Ambil Data (GET)
         async function cekStatusServer() {
             const verDisplay = document.getElementById('showVer');
             const linkDisplay = document.getElementById('showLink');
+            const maintDisplay = document.getElementById('showMaint');
+            const badge = document.getElementById('badgeStatus');
 
-            verDisplay.innerText = "Mengambil data...";
-            linkDisplay.innerText = "...";
-
+            verDisplay.innerText = "...";
+            
             try {
-                // Fetch Data Terbaru
                 const res = await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.binId}/latest`, {
                     method: 'GET',
-                    headers: {
-                        'X-Master-Key': CONFIG.apiKey,
-                        'X-Bin-Meta': 'false' // Supaya langsung dapat isi datanya
-                    }
+                    headers: { 'X-Master-Key': CONFIG.apiKey, 'X-Bin-Meta': 'false' }
                 });
 
                 if (res.ok) {
                     const data = await res.json();
-                    
-                    // Tampilkan ke layar
-                    // Kita cek "download_url" dulu, kalau gak ada baru cek "url"
-                    const version = data.version || "Tidak diketahui";
-                    const url = data.download_url || data.url || "Tidak ada link";
+                    currentData = data; // Simpan ke variabel global
+
+                    // Tampilkan Data
+                    const version = data.version || "1.0";
+                    const url = data.download_url || data.url || "-";
+                    const isMaint = data.maintenance === true;
 
                     verDisplay.innerText = "v" + version;
                     linkDisplay.innerText = url;
+                    
+                    if(isMaint) {
+                        maintDisplay.innerText = "SEDANG MAINTENANCE (TUTUP)";
+                        maintDisplay.className = "col-span-2 font-bold text-red-500";
+                        badge.innerText = "OFFLINE";
+                        badge.className = "absolute top-0 right-0 bg-red-600 text-[10px] px-2 py-0.5 rounded-bl font-bold";
+                    } else {
+                        maintDisplay.innerText = "NORMAL (ONLINE)";
+                        maintDisplay.className = "col-span-2 font-bold text-green-500";
+                        badge.innerText = "ONLINE";
+                        badge.className = "absolute top-0 right-0 bg-green-600 text-[10px] px-2 py-0.5 rounded-bl font-bold";
+                    }
+
+                    // Isi otomatis input form biar gampang edit
+                    document.getElementById('verInput').value = version;
+                    document.getElementById('linkInput').value = url;
+
                 } else {
                     verDisplay.innerText = "Gagal memuat";
-                    linkDisplay.innerText = "Cek API Key";
                 }
             } catch (e) {
                 verDisplay.innerText = "Error Koneksi";
             }
         }
 
-        // Fungsi 2: Kirim Update (PUT)
+        // Fungsi 2: Ganti Mode Maintenance (Tanpa ubah versi/link)
+        async function setMaintenance(status) {
+            const stat = document.getElementById('status');
+            stat.innerText = status ? "Mengaktifkan Maintenance..." : "Mengaktifkan Online Mode...";
+            
+            // Kita pakai data terakhir (currentData) tapi ubah status maintenance-nya
+            const paketData = { 
+                version: currentData.version, 
+                download_url: currentData.download_url || currentData.url,
+                maintenance: status // True atau False
+            };
+
+            await pushKeServer(paketData);
+        }
+
+        // Fungsi 3: Kirim Update Versi (Sekaligus matikan maintenance biasanya)
         async function kirimUpdate() {
             const ver = document.getElementById('verInput').value;
             const url = document.getElementById('linkInput').value;
-            const btn = document.getElementById('btnKirim');
+            
+            if(!ver || !url) return alert("Isi versi dan link dulu!");
+
+            const paketData = { 
+                version: ver, 
+                download_url: url,
+                maintenance: false // Kalau update, biasanya kita mau langsung Online
+            };
+
+            await pushKeServer(paketData);
+        }
+
+        // Fungsi Inti: Kirim ke JsonBin
+        async function pushKeServer(payload) {
             const stat = document.getElementById('status');
-
-            if(!ver || !url) return alert("Isi versi dan link baru dulu!");
-
-            // UI Loading
-            btn.disabled = true;
-            btn.innerText = "MENGIRIM...";
-            stat.innerText = "Sedang menulis ke database...";
-            stat.className = "mt-4 text-xs text-center text-yellow-400";
-
+            
             try {
-                // Kita standarkan pakai "download_url" agar cocok sama C# Loader terbaru
-                const paketData = { 
-                    version: ver, 
-                    download_url: url 
-                };
-
                 const respon = await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.binId}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-Master-Key': CONFIG.apiKey
                     },
-                    body: JSON.stringify(paketData)
+                    body: JSON.stringify(payload)
                 });
 
                 if(respon.ok) {
-                    stat.innerText = "SUKSES! Update Terkirim.";
+                    stat.innerText = "SUKSES! Status Server Diperbarui.";
                     stat.className = "mt-4 text-xs text-center text-green-400";
-                    btn.innerText = "BERHASIL";
-                    
-                    // Reset Form
-                    document.getElementById('verInput').value = "";
-                    document.getElementById('linkInput').value = "";
-
-                    // Refresh Preview Otomatis
-                    cekStatusServer();
-
-                    setTimeout(() => { 
-                        btn.disabled = false; 
-                        btn.innerText = "UPDATE SISTEM"; 
-                        stat.innerText = "System Ready.";
-                        stat.className = "mt-4 text-xs text-center text-gray-400";
-                    }, 3000);
+                    cekStatusServer(); // Refresh tampilan
                 } else {
-                    throw new Error("Gagal Auth. Cek API Key.");
+                    throw new Error("Gagal Auth.");
                 }
             } catch(e) {
                 stat.innerText = "ERROR: " + e.message;
                 stat.className = "mt-4 text-xs text-center text-red-500";
-                btn.disabled = false;
-                btn.innerText = "COBA LAGI";
             }
         }
 
-        // Jalankan fungsi cek status saat halaman baru dibuka
         window.onload = cekStatusServer;
-
     </script>
 </body>
 </html>
