@@ -3,56 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Control</title>
+    <title>Admin Control Panel</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-gray-900 text-white min-h-screen flex items-center justify-center font-mono">
 
-    <div class="w-full max-w-md p-8 bg-gray-800 rounded-xl border border-blue-500 shadow-2xl">
-        <h2 class="text-xl font-bold text-blue-400 mb-6 text-center">PUSAT KONTROL UPDATE</h2>
-
-        <div class="mb-4">
-            <label class="block text-xs font-bold text-gray-500 mb-1">VERSI BARU</label>
-            <input type="text" id="verInput" class="w-full bg-gray-900 border border-gray-600 rounded p-3 focus:border-blue-500 outline-none" placeholder="Contoh: 1.5">
+    <div class="w-full max-w-lg p-8 bg-gray-800 rounded-xl border border-blue-500 shadow-2xl">
+        
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold text-blue-400">PUSAT KONTROL</h2>
+            <button onclick="cekStatusServer()" class="text-xs bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded transition">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
         </div>
 
-        <div class="mb-6">
-            <label class="block text-xs font-bold text-gray-500 mb-1">LINK BARU</label>
-            <input type="text" id="linkInput" class="w-full bg-gray-900 border border-gray-600 rounded p-3 focus:border-blue-500 outline-none" placeholder="https://mega.nz/...">
+        <div class="mb-8 p-4 bg-black/40 rounded-lg border border-gray-600 relative overflow-hidden">
+            <div class="absolute top-0 right-0 bg-blue-600 text-[10px] px-2 py-0.5 rounded-bl">LIVE DATA</div>
+            
+            <div class="grid grid-cols-3 gap-4 text-sm">
+                <div class="text-gray-400">Versi Server:</div>
+                <div class="col-span-2 font-bold text-green-400" id="showVer">Loading...</div>
+                
+                <div class="text-gray-400">Link Server:</div>
+                <div class="col-span-2 text-blue-300 break-all text-xs" id="showLink">Loading...</div>
+            </div>
         </div>
+        <div class="space-y-4 border-t border-gray-700 pt-6">
+            <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider">Update Ke Versi Baru</h3>
+            
+            <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1">VERSI BARU</label>
+                <input type="text" id="verInput" class="w-full bg-gray-900 border border-gray-600 rounded p-3 focus:border-blue-500 outline-none transition" placeholder="Contoh: 1.5">
+            </div>
 
-        <button onclick="kirimUpdate()" id="btnKirim" class="w-full bg-blue-600 hover:bg-blue-700 font-bold py-3 rounded transition">
-            UPDATE SISTEM
-        </button>
+            <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1">LINK BARU (Raw/Direct)</label>
+                <input type="text" id="linkInput" class="w-full bg-gray-900 border border-gray-600 rounded p-3 focus:border-blue-500 outline-none transition" placeholder="https://github.com/...">
+            </div>
 
-        <p id="status" class="mt-4 text-xs text-center text-gray-400">Menunggu perintah...</p>
+            <button onclick="kirimUpdate()" id="btnKirim" class="w-full bg-blue-600 hover:bg-blue-700 font-bold py-3 rounded transition shadow-lg shadow-blue-500/30">
+                UPDATE SISTEM
+            </button>
+
+            <p id="status" class="mt-4 text-xs text-center text-gray-400">System Ready.</p>
+        </div>
     </div>
 
     <script>
-        // === ISI DENGAN DATA DARI LANGKAH 1 ===
+        // === KONFIGURASI ===
         const CONFIG = {
-            binId: '697f7a76d0ea881f4098f16b',      // Contoh: 65c2f3...
-            apiKey: '$2a$10$HH4YVR69nzQ8gD4/NngQt.s82mY/6EUPLNO5Kl7AsrBNQkQ/mjKd2'  // Contoh: $2a$10$...
+            binId: '697f7a76d0ea881f4098f16b',
+            apiKey: 'MASUKKAN_MASTER_KEY_DISINI' // <--- JANGAN LUPA ISI INI LAGI
         };
-        // ======================================
+        // ===================
 
+        // Fungsi 1: Ambil Data (GET) untuk Preview
+        async function cekStatusServer() {
+            const verDisplay = document.getElementById('showVer');
+            const linkDisplay = document.getElementById('showLink');
+
+            verDisplay.innerText = "Mengambil data...";
+            linkDisplay.innerText = "...";
+
+            try {
+                // Fetch Data Terbaru
+                const res = await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.binId}/latest`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Master-Key': CONFIG.apiKey,
+                        'X-Bin-Meta': 'false' // Supaya langsung dapat isi datanya
+                    }
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    
+                    // Tampilkan ke layar
+                    // Kita cek "download_url" dulu, kalau gak ada baru cek "url"
+                    const version = data.version || "Tidak diketahui";
+                    const url = data.download_url || data.url || "Tidak ada link";
+
+                    verDisplay.innerText = "v" + version;
+                    linkDisplay.innerText = url;
+                } else {
+                    verDisplay.innerText = "Gagal memuat";
+                    linkDisplay.innerText = "Cek API Key";
+                }
+            } catch (e) {
+                verDisplay.innerText = "Error Koneksi";
+            }
+        }
+
+        // Fungsi 2: Kirim Update (PUT)
         async function kirimUpdate() {
             const ver = document.getElementById('verInput').value;
             const url = document.getElementById('linkInput').value;
             const btn = document.getElementById('btnKirim');
             const stat = document.getElementById('status');
 
-            if(!ver || !url) return alert("Isi semua data dulu!");
+            if(!ver || !url) return alert("Isi versi dan link baru dulu!");
 
+            // UI Loading
             btn.disabled = true;
-            btn.innerText = "SEDANG MENGIRIM...";
-            stat.innerText = "Menghubungi JsonBin...";
+            btn.innerText = "MENGIRIM...";
+            stat.innerText = "Sedang menulis ke database...";
+            stat.className = "mt-4 text-xs text-center text-yellow-400";
 
             try {
-                // Logika: Membungkus data jadi JSON
-                const paketData = { version: ver, url: url };
+                // Kita standarkan pakai "download_url" agar cocok sama C# Loader terbaru
+                const paketData = { 
+                    version: ver, 
+                    download_url: url 
+                };
 
-                // Logika: Mengirim (PUT) ke Database untuk menimpa data lama
                 const respon = await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.binId}`, {
                     method: 'PUT',
                     headers: {
@@ -63,12 +127,25 @@
                 });
 
                 if(respon.ok) {
-                    stat.innerText = "SUKSES! Data Server Terupdate.";
+                    stat.innerText = "SUKSES! Update Terkirim.";
                     stat.className = "mt-4 text-xs text-center text-green-400";
                     btn.innerText = "BERHASIL";
-                    setTimeout(() => { btn.disabled = false; btn.innerText = "UPDATE SISTEM"; }, 2000);
+                    
+                    // Reset Form
+                    document.getElementById('verInput').value = "";
+                    document.getElementById('linkInput').value = "";
+
+                    // Refresh Preview Otomatis
+                    cekStatusServer();
+
+                    setTimeout(() => { 
+                        btn.disabled = false; 
+                        btn.innerText = "UPDATE SISTEM"; 
+                        stat.innerText = "System Ready.";
+                        stat.className = "mt-4 text-xs text-center text-gray-400";
+                    }, 3000);
                 } else {
-                    throw new Error("Gagal. Cek API Key/Bin ID.");
+                    throw new Error("Gagal Auth. Cek API Key.");
                 }
             } catch(e) {
                 stat.innerText = "ERROR: " + e.message;
@@ -77,6 +154,10 @@
                 btn.innerText = "COBA LAGI";
             }
         }
+
+        // Jalankan fungsi cek status saat halaman baru dibuka
+        window.onload = cekStatusServer;
+
     </script>
 </body>
 </html>
