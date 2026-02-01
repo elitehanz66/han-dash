@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center font-mono">
+
+    <div class="w-full max-w-md p-8 bg-gray-800 rounded-xl border border-blue-500 shadow-2xl">
+        <h2 class="text-xl font-bold text-blue-400 mb-6 text-center">PUSAT KONTROL UPDATE</h2>
+
+        <div class="mb-4">
+            <label class="block text-xs font-bold text-gray-500 mb-1">VERSI BARU</label>
+            <input type="text" id="verInput" class="w-full bg-gray-900 border border-gray-600 rounded p-3 focus:border-blue-500 outline-none" placeholder="Contoh: 1.5">
+        </div>
+
+        <div class="mb-6">
+            <label class="block text-xs font-bold text-gray-500 mb-1">LINK MEGA.NZ BARU</label>
+            <input type="text" id="linkInput" class="w-full bg-gray-900 border border-gray-600 rounded p-3 focus:border-blue-500 outline-none" placeholder="https://mega.nz/...">
+        </div>
+
+        <button onclick="kirimUpdate()" id="btnKirim" class="w-full bg-blue-600 hover:bg-blue-700 font-bold py-3 rounded transition">
+            UPDATE SISTEM
+        </button>
+
+        <p id="status" class="mt-4 text-xs text-center text-gray-400">Menunggu perintah...</p>
+    </div>
+
+    <script>
+        // === ISI DENGAN DATA DARI LANGKAH 1 ===
+        const CONFIG = {
+            binId: '697f7a76d0ea881f4098f16b',      // Contoh: 65c2f3...
+            apiKey: '$2a$10$HH4YVR69nzQ8gD4/NngQt.s82mY/6EUPLNO5Kl7AsrBNQkQ/mjKd2'  // Contoh: $2a$10$...
+        };
+        // ======================================
+
+        async function kirimUpdate() {
+            const ver = document.getElementById('verInput').value;
+            const url = document.getElementById('linkInput').value;
+            const btn = document.getElementById('btnKirim');
+            const stat = document.getElementById('status');
+
+            if(!ver || !url) return alert("Isi semua data dulu!");
+
+            btn.disabled = true;
+            btn.innerText = "SEDANG MENGIRIM...";
+            stat.innerText = "Menghubungi JsonBin...";
+
+            try {
+                // Logika: Membungkus data jadi JSON
+                const paketData = { version: ver, url: url };
+
+                // Logika: Mengirim (PUT) ke Database untuk menimpa data lama
+                const respon = await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.binId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': CONFIG.apiKey
+                    },
+                    body: JSON.stringify(paketData)
+                });
+
+                if(respon.ok) {
+                    stat.innerText = "SUKSES! Data Server Terupdate.";
+                    stat.className = "mt-4 text-xs text-center text-green-400";
+                    btn.innerText = "BERHASIL";
+                    setTimeout(() => { btn.disabled = false; btn.innerText = "UPDATE SISTEM"; }, 2000);
+                } else {
+                    throw new Error("Gagal. Cek API Key/Bin ID.");
+                }
+            } catch(e) {
+                stat.innerText = "ERROR: " + e.message;
+                stat.className = "mt-4 text-xs text-center text-red-500";
+                btn.disabled = false;
+                btn.innerText = "COBA LAGI";
+            }
+        }
+    </script>
+</body>
+</html>
