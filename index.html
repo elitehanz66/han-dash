@@ -41,6 +41,7 @@
                 <i class="fas fa-ban"></i> MAINTENANCE
             </button>
         </div>
+
         <div class="space-y-4 border-t border-gray-700 pt-6">
             <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider">Update File / Versi</h3>
             
@@ -70,10 +71,8 @@
         };
         // ===================
 
-        // Variabel global untuk menyimpan data terakhir
         let currentData = { version: "1.0", download_url: "", maintenance: false };
 
-        // Fungsi 1: Ambil Data (GET)
         async function cekStatusServer() {
             const verDisplay = document.getElementById('showVer');
             const linkDisplay = document.getElementById('showLink');
@@ -90,9 +89,9 @@
 
                 if (res.ok) {
                     const data = await res.json();
-                    currentData = data; // Simpan ke variabel global
+                    currentData = data; 
 
-                    // Tampilkan Data
+                    // Hanya menampilkan data di Status Box (Atas)
                     const version = data.version || "1.0";
                     const url = data.download_url || data.url || "-";
                     const isMaint = data.maintenance === true;
@@ -112,9 +111,8 @@
                         badge.className = "absolute top-0 right-0 bg-green-600 text-[10px] px-2 py-0.5 rounded-bl font-bold";
                     }
 
-                    // Isi otomatis input form biar gampang edit
-                    document.getElementById('verInput').value = version;
-                    document.getElementById('linkInput').value = url;
+                    // SAYA SUDAH MENGHAPUS BAGIAN PENGISIAN OTOMATIS DISINI
+                    // Jadi input box verInput dan linkInput akan tetap kosong
 
                 } else {
                     verDisplay.innerText = "Gagal memuat";
@@ -124,22 +122,19 @@
             }
         }
 
-        // Fungsi 2: Ganti Mode Maintenance (Tanpa ubah versi/link)
         async function setMaintenance(status) {
             const stat = document.getElementById('status');
             stat.innerText = status ? "Mengaktifkan Maintenance..." : "Mengaktifkan Online Mode...";
             
-            // Kita pakai data terakhir (currentData) tapi ubah status maintenance-nya
             const paketData = { 
                 version: currentData.version, 
                 download_url: currentData.download_url || currentData.url,
-                maintenance: status // True atau False
+                maintenance: status 
             };
 
             await pushKeServer(paketData);
         }
 
-        // Fungsi 3: Kirim Update Versi (Sekaligus matikan maintenance biasanya)
         async function kirimUpdate() {
             const ver = document.getElementById('verInput').value;
             const url = document.getElementById('linkInput').value;
@@ -149,13 +144,18 @@
             const paketData = { 
                 version: ver, 
                 download_url: url,
-                maintenance: false // Kalau update, biasanya kita mau langsung Online
+                maintenance: false 
             };
 
             await pushKeServer(paketData);
+            
+            // Mengosongkan kembali setelah sukses update
+            if(document.getElementById('status').innerText.includes("SUKSES")) {
+                document.getElementById('verInput').value = "";
+                document.getElementById('linkInput').value = "";
+            }
         }
 
-        // Fungsi Inti: Kirim ke JsonBin
         async function pushKeServer(payload) {
             const stat = document.getElementById('status');
             
@@ -172,7 +172,12 @@
                 if(respon.ok) {
                     stat.innerText = "SUKSES! Status Server Diperbarui.";
                     stat.className = "mt-4 text-xs text-center text-green-400";
-                    cekStatusServer(); // Refresh tampilan
+                    cekStatusServer(); 
+                    
+                    // Kosongkan form input manual
+                    document.getElementById('verInput').value = "";
+                    document.getElementById('linkInput').value = "";
+
                 } else {
                     throw new Error("Gagal Auth.");
                 }
